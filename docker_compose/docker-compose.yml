@@ -1,0 +1,53 @@
+version: '3.9'
+
+volumes:
+  postgres_data:
+  static_volume:
+
+networks:
+  backend:
+
+services:
+  web_app:
+    build: ./stocks_products
+    volumes:
+      - static_volume:/stocks_products/static
+    expose:
+      - 8000
+    command: /stocks_products/entrypoint.sh
+    depends_on:
+      - postgredb
+    networks:
+      - backend
+    env_file:
+      - ./stocks_products/.env
+  postgredb:
+    image: postgres:latest
+    environment:
+      - POSTGRES_DB=stock_product
+      - POSTGRES_USER=jerry
+      - POSTGRES_PASSWORD=jerry
+      - POSTGRES_HOST=localhost
+    healthcheck:
+      test: ['CMD-SHELL', 'pg-isready -U jerry -d stock_product']
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - backend
+  nginx:
+    build: ./nginx
+    restart: unless-stopped
+    volumes:
+      - static_volume:/stocks_products/static
+    ports:
+      - 8014:80
+    depends_on:
+      - web_app
+    networks:
+      - backend
+
